@@ -13,27 +13,16 @@ const assetsDir = path.join(__dirname, "../assets");
 const unprocessedPath = path.join(assetsDir, "/unprocessed");
 const compressedPath = path.join(assetsDir, "/processed");
 
-<<<<<<< HEAD
 let sizes = [1920, 200];
-=======
-let sizes = null;
->>>>>>> 7a7fd9fc005cd0f63ed824519efccd7d95badb12
 
 function initialise() {
   try {
     // set desired sizes from argument
-<<<<<<< HEAD
     if (sizes == null) {
       const stringSizes = process.argv.slice(2, process.argv.length);
 
       sizes = stringSizes.map((string: string) => Number.parseInt(string));
     }
-=======
-    const stringSizes = process.argv.slice(2, process.argv.length);
-
-    sizes = stringSizes.map((string: string) => Number.parseInt(string));
-
->>>>>>> 7a7fd9fc005cd0f63ed824519efccd7d95badb12
     // starts processing
     processImages();
   } catch (err) {
@@ -50,7 +39,6 @@ function processImages() {
 
   const tasks = []; // populated below
 
-<<<<<<< HEAD
   fs.readdir(unprocessedPath, (err, folders) => {
     if (err) throw new Error(err.message);
 
@@ -71,21 +59,6 @@ function processImages() {
           );
         });
       });
-=======
-  fs.readdir(unprocessedPath, (err, files) => {
-    if (err) throw new Error(err.message);
-
-    files.forEach((file) => {
-      const split = file.split(".");
-
-      // extension validation
-      if (!validFileExtensions.includes(split[1]))
-        throw new Error(`invalid files extension of ${split[1]}`);
-
-      tasks.push(
-        processImage(`${unprocessedPath}/${file}`, split[0], split[1])
-      );
->>>>>>> 7a7fd9fc005cd0f63ed824519efccd7d95badb12
     });
   });
 
@@ -98,10 +71,7 @@ function processImages() {
 
 function processImage(
   path: string,
-<<<<<<< HEAD
   folderName: string,
-=======
->>>>>>> 7a7fd9fc005cd0f63ed824519efccd7d95badb12
   fileName: string,
   fileExtension: string
 ): Promise<void> {
@@ -121,11 +91,7 @@ function processImage(
                 .resize(size, size * aspectRatio)
                 .quality(60)
                 .write(
-<<<<<<< HEAD
                   `${compressedPath}/${folderName}/${fileName}/${size}.${fileExtension}`
-=======
-                  `${compressedPath}/${fileName}/${size}.${fileExtension}`
->>>>>>> 7a7fd9fc005cd0f63ed824519efccd7d95badb12
                 );
               resolve();
             } catch (err) {
