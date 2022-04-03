@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node dist/index.js 200 400 600",
+    "start": "node dist/index.js",
     "prestart": "npm run build",
     "build": "tsc"
   },

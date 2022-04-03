@@ -11,98 +11,51 @@ const __dirname = path.dirname(__filename);
 const assetsDir = path.join(__dirname, "../assets");
 
 const unprocessedPath = path.join(assetsDir, "/unprocessed");
-const compressedPath = path.join(assetsDir, "/processed");
+const processedPath = path.join(assetsDir, "/processed");
+
+const validFileExtensions = ["png", "jpg", "jpeg", "bmp"];
 
 let sizes = [1920, 200];
+let quality = 60;
 
-function initialise() {
-  try {
-    // set desired sizes from argument
-    if (sizes == null) {
-      const stringSizes = process.argv.slice(2, process.argv.length);
+const fileTasks: Array<Promise<void>> = []; // populated below
 
-      sizes = stringSizes.map((string: string) => Number.parseInt(string));
-    }
-    // starts processing
-    processImages();
-  } catch (err) {
-    console.log(err.message);
-    return;
-  }
-}
-
-function processImages() {
-  const validFileExtensions = ["png", "jpg", "jpeg", "bmp"];
-
-  if (!Array.isArray(sizes) || sizes.length === 0)
-    throw new Error("2nd arg SIZES is INVALID");
-
-  const tasks = []; // populated below
-
-  fs.readdir(unprocessedPath, (err, folders) => {
-    if (err) throw new Error(err.message);
-
-    // folders
-    folders.forEach((folder) => {
-      const filePath = path.join(unprocessedPath, `/${folder}`);
-
-      fs.readdir(filePath, (err, files) => {
-        files.forEach((file) => {
-          const split = file.split(".");
-
-          // extension validation
-          if (!validFileExtensions.includes(split[1]))
-            throw new Error(`invalid files extension of ${split[1]}`);
-
-          tasks.push(
-            processImage(`${filePath}/${file}`, folder, split[0], split[1])
-          );
-        });
-      });
-    });
-  });
-
-  // exit if no tasks
-  if (tasks.length === 0) return;
-
-  // process all tasks
-  Promise.all(tasks);
-}
-
+//#region processImage
 function processImage(
-  path: string,
-  folderName: string,
+  srcPath: string,
+  outRoot: string,
   fileName: string,
   fileExtension: string
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    const tasks = [];
+    const resizeTasks = [];
 
     try {
-      sizes.forEach((size: number) => {
-        jimp.read(path, (err, img) => {
+      sizes.forEach((width: number) => {
+        console.log(`STARTED: ${srcPath}`);
+        jimp.read(srcPath, (err, img) => {
           if (err) throw err;
 
           const aspectRatio = img.getHeight() / img.getWidth();
 
           const task = new Promise<void>((resolve, reject) => {
             try {
-              img
-                .resize(size, size * aspectRatio)
-                .quality(60)
-                .write(
-                  `${compressedPath}/${folderName}/${fileName}/${size}.${fileExtension}`
-                );
+              const height = Math.round(width * aspectRatio);
+              const outPath = `${outRoot}/${fileName}/${width}.${fileExtension}`;
+              img.resize(width, height).quality(quality).write(outPath);
+              console.log(
+                `SUCCESSFULLY CREATED: ${outPath} @ ${width}x${height}`
+              );
               resolve();
             } catch (err) {
               reject(err.message);
             }
           });
 
-          tasks.push(task);
+          resizeTasks.push(task);
         });
 
-        Promise.all(tasks);
+        Promise.all(resizeTasks);
       });
       resolve();
     } catch (err) {
@@ -110,5 +63,92 @@ function processImage(
     }
   });
 }
+//#endregion
+
+//#region processDir
+function processDir(rootPath: string): void {
+  //process dir
+  fs.readdir(rootPath, (err, items) => {
+    if (err) throw new Error(err.message);
+
+    // look through contents
+    items.forEach((item) => {
+      const fullPath = path.join(rootPath, `/${item}`);
+
+      // if folder - start recursion
+      if (!item.includes(".")) return processDir(fullPath);
+
+      // exclude zone identifiers
+      if (item.includes(":Zone.Identifier")) return;
+
+      const split = item.split(".");
+
+      // extension validation
+      if (!validFileExtensions.includes(split[1]))
+        throw new Error(`invalid files extension of ${split[1]}`);
+
+      fileTasks.push(
+        processImage(
+          `${rootPath}/${item}`,
+          `${rootPath.replace(unprocessedPath, processedPath)}`,
+          split[0],
+          split[1]
+        )
+      );
+    });
+  });
+}
+//#endregion
+
+//#region processImages
+function processImages() {
+  if (!Array.isArray(sizes) || sizes.length === 0)
+    throw new Error("2nd arg SIZES is INVALID");
+
+  console.log("Image processor started...");
+  const startTime = Date.now();
+
+  // start
+  processDir(unprocessedPath);
+
+  // exit if no tasks
+  if (fileTasks.length === 0) return;
+
+  // process all tasks
+  Promise.all(fileTasks).then((data) => {
+    console.log("************************************************");
+    console.log(
+      `Image processor finished - time taken: ${Math.floor(
+        (Date.now() - startTime) / 1000
+      )}s`
+    );
+    console.log("************************************************");
+  });
+}
+//#endregion
+
+//#region initialise
+function initialise() {
+  try {
+    const argQuality = Number.parseInt(process.argv[2]);
+
+    if (argQuality != null) {
+      quality = argQuality;
+    }
+
+    // set desired sizes from argument
+    const argsSizes = process.argv.slice(3, process.argv.length);
+
+    if (argsSizes.length !== 0)
+      sizes = argsSizes.map((string: string) => Number.parseInt(string));
+
+    // starts processing
+    processImages();
+  } catch (err) {
+    console.log(err.message);
+    return;
+  }
+}
+//#endregion
 
 initialise();
